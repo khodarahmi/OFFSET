@@ -1,0 +1,77 @@
+#ifndef ___SETTINGS_H_INC___
+#define ___SETTINGS_H_INC___
+
+#define OF_HW_BASE_ADDRESS			0			/*	hardware offset of first filesystem's segment (can be up to 32 bits)	*/
+#define OF_HW_PAGE_SIZE				2048		/*	size of smallest independently erasable hardware sector in bytes	*/
+#define OF_HW_METAPAGE_COUNT		0			/*	this is a reserved macro and should be 0	*/
+#define OF_HW_DATAPAGE_COUNT		10			/*	number of filesystem's data pages (should be between 1 and 255)	*/
+#define OF_HW_FIRST_DATAPAGE_OFFSET 0			/*	should be 0	*/
+#define OF_HW_MIN_RW_SIZE			1			/*	minimum readable/writeable data in a single command	*/
+#define OF_HW_MAX_RW_SIZE			4			/*	maximum readable/writeable data in a single command	*/
+
+#if OF_HW_DATAPAGE_COUNT <= 0 || OF_HW_DATAPAGE_COUNT > 255
+#error "OF_HW_DATAPAGE_COUNT must be between 1 and 255"
+#endif
+
+#if OF_HW_MIN_RW_SIZE != 1 && OF_HW_MIN_RW_SIZE != 2 && OF_HW_MIN_RW_SIZE != 4
+#error "OF_HW_MIN_RW_SIZE can only have one of '1', '2' or '4' values"
+#elif OF_HW_MAX_RW_SIZE != 1 && OF_HW_MAX_RW_SIZE != 2 && OF_HW_MAX_RW_SIZE != 4
+#error "OF_HW_MAX_RW_SIZE can only have one of '1', '2' or '4' values"
+#elif OF_HW_MIN_RW_SIZE > OF_HW_MAX_RW_SIZE
+#error "OF_HW_MAX_RW_SIZE can't be greater than OF_HW_MIN_RW_SIZE"
+#endif
+
+#define OF_CONST_FREE_DWORD_VALUE 0xFFFFFFFFFFFFFFFF
+#define OF_CONST_FREE_WORD_VALUE 0xFFFFFFFF
+#define OF_CONST_FREE_HWORD_VALUE 0xFFFF
+#define OF_CONST_FREE_QWORD_VALUE 0xFF
+#define OF_CONST_TOTAL_META_SIZE OF_HW_METAPAGE_COUNT*OF_HW_PAGE_SIZE
+#define OF_CONST_TOTAL_DATA_SIZE OF_HW_DATAPAGE_COUNT*OF_HW_PAGE_SIZE
+#define OF_CONST_TOTAL_SIZE OF_CONST_TOTAL_META_SIZE + OF_CONST_TOTAL_DATA_SIZE
+#define OF_CONST_DATABASE_ADDRESS OF_HW_BASE_ADDRESS + OF_HW_PAGE_SIZE*OF_HW_METAPAGE_COUNT
+
+#define OF_OBJECT_MAX_ALLOWED_SEGMENTS_PER_ATTRIBUTE 255	/*	should be between 1 to 65534	*/
+#define OF_OBJECT_SEGMENT_MIN_SIZE 16						/*	should be between 16 to 256, modulus of 16	*/
+#define OF_OBJECT_SEGMENT_AVG_SIZE 32						/*	should be between 16 to 256, modulus of 16 and greater than OF_OBJECT_SEGMENT_MIN_SIZE	*/
+#define OF_OBJECT_SEGMENT_MAX_SIZE 64						/*	should be between 16 to 256, modulus of 16 and greater than OF_OBJECT_SEGMENT_AVG_SIZE */
+#define OF_OBJECT_SEGMENT_HEADER_SIZE ((OF_UINT)(OF_HW_MIN_RW_SIZE + sizeof(OF_OBJECT_HANDLE) + sizeof(OF_ATTRIBUTE_TYPE) + sizeof(OF_BYTE) + (OF_OBJECT_MAX_ALLOWED_SEGMENTS_PER_ATTRIBUTE <= 255 ? 1 : 2)))
+#define OF_OBJECT_SEGMENT_CONTENT_MIN_SIZE OF_OBJECT_SEGMENT_MIN_SIZE-OF_OBJECT_SEGMENT_HEADER_SIZE
+#define OF_OBJECT_SEGMENT_CONTENT_AVG_SIZE OF_OBJECT_SEGMENT_AVG_SIZE-OF_OBJECT_SEGMENT_HEADER_SIZE
+#define OF_OBJECT_SEGMENT_CONTENT_MAX_SIZE OF_OBJECT_SEGMENT_MAX_SIZE-OF_OBJECT_SEGMENT_HEADER_SIZE
+#define OF_OBJECT_MAX_ALLOWED_SIZE OF_CONST_TOTAL_DATA_SIZE
+#define OF_OBJECT_MAX_ALLOWED_ATTRIBUTE_SIZE ((OF_UINT)OF_OBJECT_SEGMENT_CONTENT_MAX_SIZE)*((OF_UINT)OF_OBJECT_MAX_ALLOWED_SEGMENTS_PER_ATTRIBUTE)-4/*4 is length of attribute size stored at first segment*/
+
+#if OF_OBJECT_SEGMENT_MIN_SIZE < 16 || OF_OBJECT_SEGMENT_MIN_SIZE%16 || OF_OBJECT_SEGMENT_MIN_SIZE > 256
+#error "OF_OBJECT_SEGMENT_MIN_SIZE has illegal value"
+#endif;
+#if OF_OBJECT_SEGMENT_AVG_SIZE <= OF_OBJECT_SEGMENT_MIN_SIZE || OF_OBJECT_SEGMENT_AVG_SIZE%16 ||OF_OBJECT_SEGMENT_AVG_SIZE > 256
+#error "OF_OBJECT_SEGMENT_AVG_SIZE has illegal value"
+#endif
+#if OF_OBJECT_SEGMENT_MAX_SIZE <= OF_OBJECT_SEGMENT_AVG_SIZE || OF_OBJECT_SEGMENT_MAX_SIZE%16 || OF_OBJECT_SEGMENT_MAX_SIZE > 256
+#error "OF_OBJECT_SEGMENT_MAX_SIZE has illegal value"
+#endif
+
+#define OF_SEGMENT_MIN_SIZE OF_OBJECT_SEGMENT_MIN_SIZE
+#define OF_SEGMENT_AVG_SIZE OF_OBJECT_SEGMENT_AVG_SIZE
+#define OF_SEGMENT_MAX_SIZE OF_OBJECT_SEGMENT_MAX_SIZE
+#define OF_SEGMENT_MAX_COUNT (OF_HW_PAGE_SIZE*OF_HW_DATAPAGE_COUNT)/OF_SEGMENT_MIN_SIZE
+#define OF_SEGMENT_MAX_COUNT_PER_PAGE OF_HW_PAGE_SIZE/OF_SEGMENT_MIN_SIZE
+#define OF_SEGMENT_MIN_COUNT (OF_HW_PAGE_SIZE*OF_HW_DATAPAGE_COUNT)/OF_SEGMENT_MAX_SIZE
+#define OF_SEGMENT_AVG_COUNT (OF_HW_PAGE_SIZE*OF_HW_DATAPAGE_COUNT)/OF_SEGMENT_AVG_SIZE
+
+#define OF_CACHE_L1		1		/*	uses OF_SEGMENT_MAX_COUNT/4 bytes of RAM	*/
+#define OF_CACHE_L2		1		/*	uses OF_SEGMENT_MAX_COUNT/2 bytes of RAM	*/
+#define OF_CACHE_L3		1		/*	uses OF_SEGMENT_MAX_COUNT bytes of RAM	*/
+#define OF_CACHE_L4		1		/*	uses OF_SEGMENT_MAX_COUNT*2 bytes of RAM	*/
+
+#if OF_CACHE_L2 && !OF_CACHE_L1
+#error "OF_CACHE_L1 must be set when OF_CACHE_L2 is setted"
+#endif
+#if OF_CACHE_L3 && !(OF_CACHE_L1 && OF_CACHE_L2)
+#error "OF_CACHE_L1 & OF_CACHE_L2 must be set when OF_CACHE_L3 is setted"
+#endif
+#if OF_CACHE_L4 && !(OF_CACHE_L1 && OF_CACHE_L2 && OF_CACHE_L3)
+#error "OF_CACHE_L1, OF_CACHE_L2 & OF_CACHE_L3 must be set when OF_CACHE_L4 is setted"
+#endif
+
+#endif /*  ___SETTINGS_H_INC___  */
